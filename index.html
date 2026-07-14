@@ -1,0 +1,69 @@
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FUELBIKE</title>
+<style>
+  :root{
+    --ink:#0B2226; --ink2:#10333A; --line:#1E4B53;
+    --amber:#F5A524; --lime:#9BD64B; --teal:#17C2D4; --salt:#7FD1E8; --paper:#EAF2EF;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;min-height:100%;display:flex;align-items:center;justify-content:center;
+    font-family:'Arial Black',Impact,system-ui,sans-serif;color:var(--paper);text-align:center;padding:26px;
+    background:
+      radial-gradient(900px 520px at 50% -8%, #16414a 0%, transparent 60%),
+      radial-gradient(700px 500px at 50% 115%, #123b27 0%, transparent 62%),
+      var(--ink);
+  }
+  .card{display:flex;flex-direction:column;align-items:center;gap:20px;
+    animation:in .9s cubic-bezier(.16,1,.3,1) both}
+
+  /* halo suave atrás da marca */
+  .markWrap{position:relative;display:grid;place-items:center}
+  .markWrap::before{content:"";position:absolute;width:118%;height:118%;border-radius:50%;
+    background:radial-gradient(closest-side, rgba(23,194,212,.30), transparent 72%);filter:blur(6px);z-index:0}
+  .mark{position:relative;z-index:1;width:min(64vw,300px);height:auto;display:block;
+    filter:drop-shadow(0 16px 34px rgba(0,0,0,.5))}
+
+  .name{font-size:clamp(40px,11vw,86px);font-weight:900;letter-spacing:.04em;line-height:.9;
+    background:linear-gradient(92deg,var(--lime),var(--teal));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 10px rgba(23,194,212,.25))}
+  .tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:clamp(9px,2.4vw,12px);
+    letter-spacing:.34em;text-transform:uppercase;color:var(--salt);opacity:.9;margin-top:-4px}
+
+  .enter{margin-top:12px;border:0;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:12px;
+    padding:16px 40px;border-radius:999px;background:var(--amber);color:#20160a;
+    font-family:'Arial Black',Impact,sans-serif;font-size:clamp(15px,3.6vw,19px);letter-spacing:.14em;text-transform:uppercase;
+    box-shadow:0 10px 30px rgba(245,165,36,.32);transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;
+    animation:pulse 2.6s ease-in-out infinite}
+  .enter:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 14px 38px rgba(245,165,36,.45)}
+  .enter:active{transform:translateY(0)}
+  .enter svg{width:20px;height:20px}
+  .foot{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;color:var(--salt);opacity:.55;margin-top:6px}
+
+  @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes pulse{0%,100%{box-shadow:0 10px 30px rgba(245,165,36,.28)}50%{box-shadow:0 10px 40px rgba(245,165,36,.5)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<div class="card">
+  <div class="markWrap">
+    <img class="mark" src="marca.png" alt="FuelBike"
+         onerror="this.style.display='none'">
+  </div>
+
+  <div class="name">FUELBIKE</div>
+  <div class="tag">Hidratação · Energia · Eletrólitos</div>
+
+  <a class="enter" href="calculadora.html">
+    Entrar
+    <svg viewBox="0 0 24 24" fill="none" stroke="#20160a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6"/>
+    </svg>
+  </a>
+
+  <div class="foot">Calculadora de garrafinha · MTB</div>
+</div>
