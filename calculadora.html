@@ -97,7 +97,11 @@
 <h2>Seu pedal</h2>
 <div class="grid">
   <div><label>Distância (km)</label><input id="dist" type="number" value="60" min="1"></div>
-  <div><label>Velocidade média (km/h)</label><input id="vel" type="number" value="27" min="5"></div>
+  <div><label>Informar duração por</label>
+    <select id="durMode"><option value="vel" selected>Velocidade média</option><option value="tempo">Tempo de pedal</option></select>
+  </div>
+  <div id="velBox"><label>Velocidade média (km/h)</label><input id="vel" type="number" value="27" min="5"></div>
+  <div id="tempoBox" style="display:none"><label>Tempo de pedal (minutos)</label><input id="tempo" type="number" value="120" min="10"></div>
   <div><label>Peso (kg)</label><input id="peso" type="number" value="70" min="30"></div>
   <div><label>Temperatura (°C)</label><input id="temp" type="number" value="28"></div>
   <div><label>Garrafa (ml)</label>
@@ -218,18 +222,35 @@
 const $ = s => document.querySelector(s);
 document.querySelectorAll('.chip input').forEach(i=>i.onchange=()=>i.parentElement.classList.toggle('on',i.checked));
 
+// alterna entre informar por velocidade média ou por tempo de pedal
+const durSel=document.querySelector('#durMode');
+durSel.onchange=()=>{
+  const t=durSel.value==='tempo';
+  document.querySelector('#velBox').style.display=t?'none':'';
+  document.querySelector('#tempoBox').style.display=t?'':'none';
+};
+
 const cs=(x,d=0)=>x.toLocaleString('pt-BR',{maximumFractionDigits:d});
 const colher = g => (g/12).toFixed(1); // colher de sopa rasa de pó ≈ 12 g
 const colherMel = g => (g/21).toFixed(1); // colher de sopa de mel ≈ 21 g
 
 $('#calc').onclick = () => {
-  const dist=+$('#dist').value, vel=+$('#vel').value, peso=+$('#peso').value, temp=+$('#temp').value;
+  const dist=+$('#dist').value, peso=+$('#peso').value, temp=+$('#temp').value;
   const gar=+$('#garrafa').value, inten=+$('#int').value, suor=+$('#suor').value, gut=+$('#gut').value;
-  if(!dist||!vel||!peso){alert('Preencha distância, velocidade e peso.');return;}
   const ing = [...document.querySelectorAll('.chip input:checked')].map(i=>i.value);
-  if(!ing.length){alert('Selecione ao menos um ingrediente.');return;}
 
-  const h = dist/vel;
+  // duração: por velocidade média OU por tempo de pedal (minutos)
+  let vel, h;
+  if($('#durMode').value==='tempo'){
+    const tmin=+$('#tempo').value;
+    if(!dist||!tmin||!peso){alert('Preencha distância, tempo de pedal e peso.');return;}
+    h=tmin/60; vel=dist/h;
+  } else {
+    vel=+$('#vel').value;
+    if(!dist||!vel||!peso){alert('Preencha distância, velocidade e peso.');return;}
+    h=dist/vel;
+  }
+  if(!ing.length){alert('Selecione ao menos um ingrediente.');return;}
 
   // --- Carboidrato por hora ---
   let cph;
