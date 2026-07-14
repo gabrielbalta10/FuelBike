@@ -347,14 +347,30 @@ $('#calc').onclick = () => {
   passos.push({t:'Pós', d:`${cs(peso*1.2)} g de carbo + ${cs(peso*0.3,1)} g de proteína e 1,5 L de líquido por kg perdido.`});
   $('#tl').innerHTML = passos.map(p=>`<div class="tick"><div class="t">${p.t}</div><div class="d">${p.d}</div></div>`).join('');
 
-  // --- Preparo ---
-  $('#prep').innerHTML = [
-    'Dissolva o pó em ~150 ml de água morna primeiro — malto empedra em água gelada.',
-    'Acrescente o mel/melado e mexa até sumir o fundo grudento.',
-    `Complete com água gelada até ${mlPorGar} ml e agite 20 segundos com a tampa fechada.`,
-    nGar>1 ? `Repita para as ${nGar} garrafas. As que não vão no quadro, leve como pó pré-pesado em saquinho e complete com água no meio do caminho.` : 'Leve a garrafa cheia e leve outra só com água para beber puro no calor.',
-    'Prove em casa antes da prova. Bebida nova em dia de prova é receita de dor de barriga.'
-  ].map(t=>`<li>${t}</li>`).join('');
+  // --- Preparo (dinâmico: só mostra passos dos ingredientes selecionados) ---
+  const nomes = rec.map(r=>r.nome);
+  const tem = n => nomes.includes(n);
+  const artigo = {
+    'Maltodextrina':'a maltodextrina','Eletrólito em pó':'o eletrólito em pó',
+    'Frutose / açúcar':'a frutose (ou açúcar)','Sal refinado':'o sal',
+    'Mel':'o mel','Melado de cana':'o melado'
+  };
+  const listar = a => a.length<2 ? (a[0]||'') : a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+  const prep = [];
+  const pos = ['Maltodextrina','Eletrólito em pó','Frutose / açúcar','Sal refinado'].filter(tem).map(n=>artigo[n]);
+  if(pos.length) prep.push(`Dissolva ${listar(pos)} em ~150 ml de água morna, mexendo até ficar transparente${tem('Maltodextrina')?' — a maltodextrina empedra em água gelada, por isso comece com água morna':''}.`);
+  const doce = ['Mel','Melado de cana'].filter(tem).map(n=>artigo[n]);
+  if(doce.length) prep.push(`Acrescente ${listar(doce)}, mexendo até dissolver o fundo grudento.`);
+  if(tem('Eletrólito líquido')) prep.push('Pingue as gotas de eletrólito líquido na garrafa.');
+  if(tem('Pastilha efervescente'))
+    prep.push(`Complete com água gelada até ${cs(mlPorGar)} ml, adicione a pastilha efervescente por último e espere borbulhar por completo antes de fechar — não agite com força para não transbordar.`);
+  else
+    prep.push(`Complete com água gelada até ${cs(mlPorGar)} ml e agite 20 segundos com a tampa fechada.`);
+  prep.push(nGar>1
+    ? `Repita para as ${nGar} garrafas. As que não vão no quadro, leve os ingredientes pré-medidos num saquinho/frasco e misture com água no meio do caminho.`
+    : 'Leve a garrafa cheia e, no calor, leve outra só com água para beber puro e molhar a nuca.');
+  prep.push('Prove em casa antes da prova. Bebida nova em dia de prova é receita de dor de barriga.');
+  $('#prep').innerHTML = prep.map(t=>`<li>${t}</li>`).join('');
 
   // --- Recomendações ---
   const tips = [];
