@@ -118,6 +118,7 @@
   <div><label>Temperatura (°C)</label><input id="temp" type="number" value="28"></div>
   <div><label>Garrafa 1 na bike (ml)</label><input id="gar1" type="number" value="750" min="100" step="50" placeholder="ex: 750"></div>
   <div><label>Garrafa 2 na bike (ml) — 0 se levar só uma</label><input id="gar2" type="number" value="750" min="0" step="50" placeholder="ex: 750 ou 0"></div>
+  <div><label>Mochila de hidratação (ml) — 0 se não usar</label><input id="mochila" type="number" value="0" min="0" step="100" placeholder="ex: 1500 ou 0"></div>
   <div><label>Nível</label>
     <select id="nivel">
       <option value="1" selected>Iniciante (estômago não treinado)</option>
@@ -162,6 +163,21 @@
   <div><label>Sódio por pastilha (mg)</label><input id="naPast" type="number" value="300"></div>
   <div><label>Sódio do líquido (mg por ml)</label><input id="naLiq" type="number" value="20"></div>
   <div class="note" style="align-self:end">Confira o rótulo do seu produto e ajuste. Marcas variam de 250 a 1000 mg de sódio por dose.</div>
+</div>
+
+<label style="margin-top:18px">Suplementação sólida / géis <span class="note" style="text-transform:none;letter-spacing:0">— para provas longas, quando sobra carboidrato que não cabe na bebida</span></label>
+<div class="grid" style="margin-top:6px">
+  <div><label>Como vai suplementar</label>
+    <select id="supTipo">
+      <option value="definir" selected>A definir</option>
+      <option value="gel">Géis</option>
+      <option value="solido">Alimentos sólidos</option>
+      <option value="ambos">Géis + alimentos sólidos</option>
+    </select>
+  </div>
+  <div><label>Alimentos/géis que vai levar</label><input id="supItens" type="text" placeholder="ex: banana, barra de cereal, gel X"></div>
+  <div><label>Carboidrato por gel (g)</label><input id="gelCarb" type="number" value="25" min="1"></div>
+  <div><label>Sódio por gel (mg)</label><input id="gelNa" type="number" value="50" min="0"></div>
 </div>
 
 <button class="go noprint" id="calc">Calcular receita</button>
@@ -247,7 +263,8 @@ const colherMel = g => (g/21).toFixed(1); // colher de sopa de mel ≈ 21 g
 
 $('#calc').onclick = () => {
   const dist=+$('#dist').value, peso=+$('#peso').value, temp=+$('#temp').value;
-  const gar1=+$('#gar1').value, gar2=+$('#gar2').value||0, inten=+$('#int').value, suor=+$('#suor').value, gut=+$('#gut').value;
+  const gar1=+$('#gar1').value, gar2=+$('#gar2').value||0, mochila=+$('#mochila').value||0, inten=+$('#int').value, suor=+$('#suor').value, gut=+$('#gut').value;
+  const supTipo=$('#supTipo').value, supItens=$('#supItens').value.trim(), gelCarb=+$('#gelCarb').value||25, gelNa=+$('#gelNa').value||0;
   const ing = [...document.querySelectorAll('.chip input:checked')].map(i=>i.value);
 
   // duração: por velocidade média OU por tempo de pedal (minutos)
@@ -286,16 +303,18 @@ $('#calc').onclick = () => {
   const met = vel<20?6: vel<25?8: vel<30?10:12;
   const kcal = met*peso*h;
 
-  // --- Garrafas: o que cabe na bike (máx. 2) e reabastecimento ---
-  const carryCap = gar1 + gar2;                            // capacidade total nas garrafas
+  // --- Capacidade na bike (2 garrafas + mochila) e reabastecimento ---
+  const carryCap = gar1 + gar2 + mochila;                  // capacidade total que dá pra carregar
   const nBottles = gar2>0 ? 2 : 1;
+  const capLabel = `${nBottles} garrafa${nBottles>1?'s':''}${mochila>0?' + mochila':''}`;
   const liqR = Math.round(liqTotal);
   const cabe = liqR <= carryCap + 1;                       // dá pra levar tudo de uma vez?
-  const loads = Math.max(1, Math.ceil(liqR / carryCap));   // quantas vezes é preciso encher a bike
+  const loads = Math.max(1, Math.ceil(liqR / carryCap));   // quantas vezes é preciso encher tudo
   const refills = loads - 1;                               // reabastecimentos no caminho
-  let v1, v2;                                              // volume em cada garrafa
-  if(cabe){ v1 = Math.min(gar1, liqR); v2 = Math.max(0, liqR - v1); }
-  else    { v1 = gar1; v2 = gar2; }
+  // distribui o líquido entre garrafa 1, garrafa 2 e mochila (enche nessa ordem)
+  let rem = cabe ? liqR : carryCap;
+  const fill = cap => { const x=Math.min(cap, Math.max(0,rem)); rem-=x; return Math.round(x); };
+  const v1 = fill(gar1), v2 = fill(gar2), vMoch = fill(mochila);
   const perMl = liqTotal>0 ? 1/liqTotal : 0;               // concentração uniforme (fração por ml)
   const mlPorGar = v1;                                     // exibição principal = Garrafa 1
 
@@ -347,7 +366,7 @@ $('#calc').onclick = () => {
     [`${cs(naTotal)} mg`,`Sódio · ${cs(naph)} mg/h`],
     [`${cs(liqTotal/1000,1)} L`,'Líquido total'],
     [`${cs(kcal)} kcal`,'Gasto estimado'],
-    [`${cs(carryCap)} ml`,`Cabe na bike (${nBottles} garrafa${nBottles>1?'s':''})`],
+    [`${cs(carryCap)} ml`,`Cabe na bike (${capLabel})`],
     refills>0 ? [`${loads}×`,'Encher a bike · reabastecer'] : [`${cs(carbLiquido/liqTotal*100,1)}%`,'Concentração da bebida'],
     refills>0 ? [`${cs(carbLiquido/liqTotal*100,1)}%`,'Concentração da bebida'] : [`${cs(carbSolido)} g`,'Carbo em comida sólida']
   ].map(([n,l])=>`<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
@@ -363,13 +382,30 @@ $('#calc').onclick = () => {
     }).join('') +
     `<tr><td>Água</td><td><b>${cs(v1)} ml</b></td><td>até completar</td><td>${cs(liqTotal)} ml</td></tr>`;
 
+  const conts = [];
+  if(v1>0) conts.push(`Garrafa 1 com ${cs(v1)} ml`);
+  if(v2>0) conts.push(`Garrafa 2 com ${cs(v2)} ml`);
+  if(vMoch>0) conts.push(`Mochila com ${cs(vMoch)} ml`);
   const plano = !cabe
-    ? ` Só cabem ${cs(carryCap)} ml na bike (${nBottles} garrafa${nBottles>1?'s':''}), mas o pedal pede ${cs(liqTotal/1000,1)} L. Encha a bike ${loads}× e reabasteça ${refills}× com água no caminho — leve o pó/eletrólito pré-pesado num saquinho para cada reabastecimento.`
-    : (v2>0
-        ? ` Divida na bike: Garrafa 1 com ${cs(v1)} ml e Garrafa 2 com ${cs(v2)} ml — ${v1===v2?'mesma mistura nas duas':`a Garrafa 2 leva ~${Math.round(v2/v1*100)}% das quantidades da Garrafa 1 (mesma concentração)`}.`
-        : ` Vai tudo em 1 garrafa de ${cs(v1)} ml.`);
-  $('#conc').textContent = `Concentração de ${(carbLiquido/liqTotal*100).toFixed(1)}% — abaixo de 8%, o esvaziamento gástrico continua rápido e o risco de enjoo é baixo.` +
-    (carbSolido>3 ? ` Os ${cs(carbSolido)} g restantes vão em comida sólida (banana ≈ 25 g, barra ≈ 30 g, gel ≈ 25 g), porque concentrar tudo na garrafa causaria desconforto.` : '') + plano;
+    ? ` Só cabem ${cs(carryCap)} ml na bike (${capLabel}), mas o pedal pede ${cs(liqTotal/1000,1)} L. Encha tudo ${loads}× e reabasteça ${refills}× com água no caminho — leve o pó/eletrólito pré-pesado num saquinho para cada reabastecimento.`
+    : (conts.length>1
+        ? ` Distribua: ${conts.join(', ')} — mesma mistura (mesma concentração) em cada recipiente, na proporção do volume.`
+        : ` Vai tudo em ${conts[0]||('1 garrafa de '+cs(v1)+' ml')}.`);
+  // suplementação sólida / géis (obrigatória quando sobra carbo para sólido)
+  let solidoTxt = '';
+  if(carbSolido>3){
+    const gels = Math.max(1, Math.ceil(carbSolido/gelCarb));
+    const naGel = Math.round(gels*gelNa);
+    const base = ` Faltam ${cs(carbSolido)} g de carboidrato que não cabem na bebida`;
+    if(supTipo==='gel' || supTipo==='ambos'){
+      solidoTxt = base + `: ~${gels} gel(is) de ${cs(gelCarb)} g` + (gelNa>0?` (que ainda somam ${cs(naGel)} mg de sódio)`:'') + (supTipo==='ambos'?', mais alimentos sólidos de fácil digestão.':'.') + (supItens?` Itens: ${supItens}.`:'');
+    } else if(supTipo==='solido'){
+      solidoTxt = base + ` em alimentos sólidos de fácil digestão${supItens?` (${supItens})`:' (ex.: banana ≈ 25 g, barra ≈ 30 g)'}.`;
+    } else {
+      solidoTxt = base + `. Informe no campo "Suplementação" quais géis/alimentos vai usar — é obrigatório em provas longas.`;
+    }
+  }
+  $('#conc').textContent = `Concentração de ${(carbLiquido/liqTotal*100).toFixed(1)}% — abaixo de 8%, o esvaziamento gástrico continua rápido e o risco de enjoo é baixo.` + solidoTxt + plano;
 
   // --- Garrafa (assinatura) ---
   const totalG = rec.reduce((s,r)=>s+r.g,0) || 1;
@@ -389,7 +425,7 @@ $('#calc').onclick = () => {
   const mlGole = Math.round(liqTotal/nBlocos);
   for(let i=1;i<=nBlocos;i++){
     const min = i*20;
-    passos.push({t:`${Math.floor(min/60)}h${String(min%60).padStart(2,'0')}`, d:`${mlGole} ml da mistura${(i%3===0 && carbSolido>3)?' + mordida de sólido':''}`});
+    passos.push({t:`${Math.floor(min/60)}h${String(min%60).padStart(2,'0')}`, d:`${mlGole} ml da mistura${(i%3===0 && carbSolido>3)?' + gel/sólido':''}`});
   }
   passos.push({t:'Pós', d:`${cs(peso*1.2)} g de carbo + ${cs(peso*0.3,1)} g de proteína e 1,5 L de líquido por kg perdido.`});
   $('#tl').innerHTML = passos.map(p=>`<div class="tick"><div class="t">${p.t}</div><div class="d">${p.d}</div></div>`).join('');
@@ -425,6 +461,8 @@ $('#calc').onclick = () => {
   const tips = [];
   tips.push(`Beba a cada 15–20 min, ~${mlGole} ml por vez. Sede já é atraso.`);
   if(refills>0) tips.push(`<span class="warn"></span>Só cabem ${cs(carryCap)} ml na bike, e o pedal pede ${cs(liqTotal/1000,1)} L. Planeje ${refills} ponto(s) de reabastecimento com água e leve o pó pré-pesado — sem isso o risco é desidratação.`);
+  if(carbSolido>=15 && supTipo==='definir') tips.push(`<span class="warn"></span>Prova longa: são ${cs(carbSolido)} g de carboidrato que não cabem na bebida. Informe no campo "Suplementação" quais géis/alimentos vai usar (e a composição dos géis) — obrigatório para a estratégia fechar.`);
+  if(carbSolido>3 && (supTipo==='gel'||supTipo==='ambos') && gelNa>0){ const gels=Math.max(1,Math.ceil(carbSolido/gelCarb)); tips.push(`Os ~${gels} gel(is) somam ${cs(gels*gelNa)} mg de sódio — isso entra na sua conta de eletrólitos junto com a bebida.`); }
   if(nBottles===1) tips.push('Se puder, leve uma segunda garrafa só com água: para lavar a boca, molhar a nuca e diluir a mistura se enjoar.');
   if(cph>=90) tips.push('Acima de 90 g/h você depende de glicose + frutose juntas (2:1). Só funciona se o intestino estiver treinado — suba 10 g/h por semana.');
   if(temp>=30) tips.push('<span></span>Acima de 30 °C o sódio e o volume mandam mais que o carboidrato. Se tiver que escolher, priorize beber.');
