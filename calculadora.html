@@ -305,6 +305,10 @@ $('#calc').onclick = () => {
   }
   if(!ing.length){alert('Selecione ao menos um ingrediente.');return;}
   if(!gar1||gar1<100){alert('Informe a Garrafa 1 (mínimo 100 ml).');return;}
+  // fonte industrial exige o sódio informado
+  if(ing.includes('eletro') && !(+$('#naPo').value>0)){alert('Você selecionou "Eletrólito em pó": informe o sódio dele (mg por 30 g), conforme o rótulo.');$('#naPo').focus();return;}
+  if(ing.includes('pastilha') && !(+$('#naPast').value>0)){alert('Você selecionou "Pastilha efervescente": informe o sódio por pastilha (mg), conforme o rótulo.');$('#naPast').focus();return;}
+  if(ing.includes('liquido') && !(+$('#naLiq').value>0)){alert('Você selecionou "Eletrólito líquido": informe o sódio dele (mg por ml), conforme o rótulo.');$('#naLiq').focus();return;}
 
   // --- Carboidrato por hora ---
   let cph;
