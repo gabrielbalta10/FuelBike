@@ -332,23 +332,29 @@ $('#calc').onclick = () => {
   const met = vel<20?6: vel<25?8: vel<30?10:12;
   const kcal = met*peso*h;
 
-  // --- Capacidade na bike (2 garrafas + mochila) e reabastecimento ---
-  const carryCap = gar1 + gar2 + mochila;                  // capacidade total que dá pra carregar
+  // --- Capacidade na bike: a MISTURA cabe nas 2 garrafas; a MOCHILA é água pura ---
+  const bottleCap = gar1 + gar2;                           // garrafas levam a mistura (carbo + eletrólitos)
+  const carryCap = gar1 + gar2 + mochila;                  // capacidade total de fluido (com a água da mochila)
   const nBottles = gar2>0 ? 2 : 1;
-  const capLabel = `${nBottles} garrafa${nBottles>1?'s':''}${mochila>0?' + mochila':''}`;
+  const capLabel = `${nBottles} garrafa${nBottles>1?'s':''}${mochila>0?' + mochila d\'água':''}`;
   const liqR = Math.round(liqTotal);
-  const cabe = liqR <= carryCap + 1;                       // dá pra levar tudo de uma vez?
-  const loads = Math.max(1, Math.ceil(liqR / carryCap));   // quantas vezes é preciso encher tudo
-  const refills = loads - 1;                               // reabastecimentos no caminho
-  // distribui o líquido entre garrafa 1, garrafa 2 e mochila (enche nessa ordem)
-  let rem = cabe ? liqR : carryCap;
+  // a mistura ocupa até UMA carga das 2 garrafas; o resto do líquido é ÁGUA PURA
+  const mixFluid = Math.min(liqR, bottleCap);              // volume de mistura (nas garrafas)
+  const waterNeed = Math.max(0, liqR - mixFluid);          // água pura (mochila + reabastecimento)
+  const mochilaWater = Math.min(mochila, waterNeed);
+  // hidratação: cabe tudo de uma vez? senão, reabastece água
+  const cabe = liqR <= carryCap + 1;
+  const loads = Math.max(1, Math.ceil(liqR / carryCap));
+  const refills = loads - 1;
+  // distribui a mistura nas garrafas (enche a 1, depois a 2)
+  let rem = mixFluid;
   const fill = cap => { const x=Math.min(cap, Math.max(0,rem)); rem-=x; return Math.round(x); };
-  const v1 = fill(gar1), v2 = fill(gar2), vMoch = fill(mochila);
-  const perMl = liqTotal>0 ? 1/liqTotal : 0;               // concentração uniforme (fração por ml)
+  const v1 = fill(gar1), v2 = fill(gar2);
+  const perMl = 1/mixFluid;                                // concentração da mistura (fração por ml)
   const mlPorGar = v1;                                     // exibição principal = Garrafa 1
 
-  // --- Limite de concentração (máx 8% de carbo na garrafa) ---
-  const carbMaxLiquido = liqTotal*0.08;
+  // --- Teto de carbo: a mistura (2 garrafas, a 8%) só comporta isto; o excedente vai p/ sólido ---
+  const carbMaxLiquido = mixFluid*0.08;
   const carbLiquido = Math.min(carbTotal, carbMaxLiquido);
   const carbSolido = Math.max(0, carbTotal-carbLiquido);
   const precisaSup = carbSolido > 30;   // só planeja sólido/gel quando o déficit é relevante
@@ -397,36 +403,33 @@ $('#calc').onclick = () => {
     [`${cs(liqTotal/1000,1)} L`,'Líquido total'],
     [`${cs(kcal)} kcal`,'Gasto estimado'],
     [`${cs(carryCap)} ml`,`Cabe na bike (${capLabel})`],
-    refills>0 ? [`${loads}×`,'Encher a bike · reabastecer'] : [`${cs(carbLiquido/liqTotal*100,1)}%`,'Concentração da bebida'],
-    refills>0 ? [`${cs(carbLiquido/liqTotal*100,1)}%`,'Concentração da bebida'] : [`${cs(carbSolido)} g`,'Carbo em comida sólida']
+    refills>0 ? [`${loads}×`,'Encher a bike · reabastecer'] : [`${cs(carbLiquido/mixFluid*100,1)}%`,'Concentração da bebida'],
+    refills>0 ? [`${cs(carbLiquido/mixFluid*100,1)}%`,'Concentração da bebida'] : [`${cs(carbSolido)} g`,'Carbo em comida sólida']
   ].map(([n,l])=>`<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
 
-  // --- Tabela: composição de cada recipiente + total do pedal ---
+  // --- Tabela: composição da MISTURA nas garrafas (mochila é água, fica de fora) ---
   const recip = [];
   if(v1>0) recip.push({lab:'Garrafa 1', vol:v1});
   if(v2>0) recip.push({lab:'Garrafa 2', vol:v2});
-  if(vMoch>0) recip.push({lab:'Mochila', vol:vMoch});
   const th = `<tr><th>Ingrediente</th>` +
     recip.map(c=>`<th>${c.lab}<br><span style="font-weight:400;opacity:.65">${cs(c.vol)} ml</span></th>`).join('') +
-    `<th>Medida (G1)</th><th>Total${refills>0?` (${loads}×)`:''}</th></tr>`;
+    `<th>Medida (G1)</th><th>Total no pedal</th></tr>`;
   const body = rec.map(r=>{
     const u = r.nome==='Eletrólito líquido' ? 'ml' : r.nome==='Pastilha efervescente' ? 'un' : 'g';
     const base = r.nome==='Pastilha efervescente' ? r.un : r.g;       // base do total no pedal
     const cells = recip.map(c=>`<td><b>${cs(base*c.vol*perMl,1)} ${u}</b></td>`).join('');
     return `<tr><td>${r.nome}</td>${cells}<td>${r.med(r.g*v1*perMl,r)}</td><td>${cs(base,1)} ${u}</td></tr>`;
   }).join('');
-  const agua = `<tr><td>Água</td>${recip.map(c=>`<td><b>${cs(c.vol)} ml</b></td>`).join('')}<td>até completar</td><td>${cs(liqTotal)} ml</td></tr>`;
+  const agua = `<tr><td>Água (mistura)</td>${recip.map(c=>`<td><b>${cs(c.vol)} ml</b></td>`).join('')}<td>até completar</td><td>${cs(mixFluid)} ml</td></tr>`;
   $('#tbl').innerHTML = th + body + agua;
 
-  const conts = [];
-  if(v1>0) conts.push(`Garrafa 1 com ${cs(v1)} ml`);
-  if(v2>0) conts.push(`Garrafa 2 com ${cs(v2)} ml`);
-  if(vMoch>0) conts.push(`Mochila com ${cs(vMoch)} ml`);
-  const plano = !cabe
-    ? ` Só cabem ${cs(carryCap)} ml na bike (${capLabel}), mas o pedal pede ${cs(liqTotal/1000,1)} L. Encha tudo ${loads}× e reabasteça ${refills}× com água no caminho — leve o pó/eletrólito pré-pesado num saquinho para cada reabastecimento.`
-    : (conts.length>1
-        ? ` Distribua: ${conts.join(', ')} — mesma mistura (mesma concentração) em cada recipiente, na proporção do volume.`
-        : ` Vai tudo em ${conts[0]||('1 garrafa de '+cs(v1)+' ml')}.`);
+  // plano: mistura nas garrafas + mochila de água + reabastecimentos
+  const mix = [];
+  if(v1>0) mix.push(`Garrafa 1 com ${cs(v1)} ml`);
+  if(v2>0) mix.push(`Garrafa 2 com ${cs(v2)} ml`);
+  let plano = mix.length>1 ? ` A mistura vai nas garrafas: ${mix.join(' e ')}.` : ` A mistura vai na garrafa: ${cs(v1)} ml.`;
+  if(mochilaWater>0) plano += ` A mochila leva ${cs(mochilaWater)} ml de água pura (hidratação, sem mistura).`;
+  if(waterNeed>mochilaWater) plano += ` Ainda faltam ${cs(waterNeed-mochilaWater)} ml de água — reabasteça no caminho.`;
   // suplementação sólida / géis (obrigatória quando sobra carbo para sólido)
   let solidoTxt = '';
   if(precisaSup){
@@ -441,7 +444,7 @@ $('#calc').onclick = () => {
       solidoTxt = base + `. Informe no campo "Suplementação" quais géis/alimentos vai usar — é obrigatório em provas longas.`;
     }
   }
-  $('#conc').textContent = `Concentração de ${(carbLiquido/liqTotal*100).toFixed(1)}% — abaixo de 8%, o esvaziamento gástrico continua rápido e o risco de enjoo é baixo.` + solidoTxt + plano;
+  $('#conc').textContent = `Concentração da mistura: ${(carbLiquido/mixFluid*100).toFixed(1)}% — até 8%, o esvaziamento gástrico continua rápido e o risco de enjoo é baixo.` + solidoTxt + plano;
 
   // Suplementação só aparece quando a bebida (a 8%) não comporta todo o carbo
   $('#supBox').style.display = precisaSup ? '' : 'none';
